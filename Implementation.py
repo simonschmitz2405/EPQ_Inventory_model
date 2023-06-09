@@ -53,7 +53,7 @@ number_retailer = 3
 Define the functions for the manufacturer profit
 '''
 
-# Demand of the retailer with exponential distribution
+# Demand of the retailer with exponential distribution (DR)
 def demand_retailer(rho):
     DR = np.ones(number_retailer)
     for i in range(number_retailer):
@@ -70,13 +70,19 @@ def prod_cost_manu(q):
 
 # Inventory holding cost for raw material (HM)
 def holding_raw_manu(q,rho):
-    return (((Hmi*(q.sum()**2))/(2*(1-beta)*p))-((Hmi*(demand_retailer(rho).sum())*(q.sum()**2))/(2*((1-beta)**2)*(p**2))))
+    demand_retailer_value = demand_retailer(rho)
+    sum_q = q.sum()
+    return (((Hmi*(sum_q**2))/(2*(1-beta)*p))-((Hmi*(demand_retailer_value.sum())*(sum_q**2))/(2*((1-beta)**2)*(p**2))))
 
-#print('hold',holding_raw_manu(np.array([26889.17,6769.61,23221.23]),172.38))
+print('hold',holding_raw_manu(np.array([26889.17,6769.61,23221.23]),172.38))
+
+
 
 # Inventory holding cost for good items (HP)
 def holding_good_manu(q,rho):
-    return HM/2*((q.sum()**2)/(demand_retailer(rho).sum())-(q.sum()**2)/((1-beta)*p))
+    demand_retailer_value = demand_retailer(rho)
+    sum_q = q.sum()
+    return HM/2*((sum_q**2)/(demand_retailer_value.sum())-(sum_q**2)/((1-beta)*p))
 
 # Inventory holding cost for defective times (HPD)
 def holding_defec_manu(q):
@@ -98,6 +104,7 @@ def init_sales_manu(rho):
 def EAPM(q,rho):
     return income_sales_manu(q)-prod_cost_manu(q)-holding_raw_manu(q,rho)-holding_good_manu(q,rho)- holding_defec_manu(q) -quality_inspec_manu(q)-setup_manu(q)-init_sales_manu(rho)
 
+print(holding_raw_manu(np.array([100,100,100]),100))
 
 '''
 Define the functions for the retailers profit
@@ -145,6 +152,8 @@ def benefit_retailer(q,rho):
         Benefit[i] = income_sales_retailer(rho)[i] - purch_cost_retailer(q)[i]-holding_good_retailer(q,rho)[i]-marketing_retailer(rho)[i]-setup_retailer(q,rho)[i]
     return Benefit
 
+
+
 # Expected average profit of retailers
 def EAPR(q,rho):
     return benefit_retailer(q,rho).sum()
@@ -152,7 +161,6 @@ def EAPR(q,rho):
 # Collaborating profit function
 def EAPC(q,rho):
     return EAPM(q,rho)+EAPR(q,rho)
-
 
 
 '''
@@ -170,6 +178,7 @@ def objective_non_collaborative(x):
     rho = x[3]
     return -EAPM(q, rho)
 
+
 # Constraint function
 def constraint(x):
     q = x[:3]
@@ -177,7 +186,7 @@ def constraint(x):
 
 # Define the constraint
 constraints = [{'type':'ineq','fun':constraint}]
-initial_guess = np.array([10, 10, 10, 10])
+initial_guess = np.array([100, 100, 100, 100])
 bounds = [(0,None),(0,None),(0,None),(0,None)]
 #options = {'maxiter':1000, 'maxfev':2000}
 
@@ -185,19 +194,21 @@ bounds = [(0,None),(0,None),(0,None),(0,None)]
 gamma = np.array([1.,1.,1.])
 psi = 1
 
+#print('non-coll:', EAPM(np.array([26889.17,6769.61,23221.23]),172.38))
+
 '''
 Give out the results
 '''
 
 # Give out the result of optimization
-# result1 = minimize(objective_non_collaborative,initial_guess,constraints=constraints,bounds=bounds, tol=10e-2)
+result1 = minimize(objective_non_collaborative,initial_guess,method='cobyla',constraints=constraints, bounds=bounds, tol=10e-3)
 
-# np.set_printoptions(suppress= True)
-# print('!!!The result of the objective_non_collaborative is: !!!\n',result1.x)
+np.set_printoptions(suppress= True)
+print('!!!The result of the objective_non_collaborative is: !!!\n',result1.x)
 
-# print('EAPM: ',EAPM(result1.x[:3],result1.x[3]))
-# print('EAPR: ',EAPR(result1.x[:3],result1.x[3]))
-# print('EAPC: ',EAPC(result1.x[:3],result1.x[3]))
+print('EAPM: ',EAPM(result1.x[:3],result1.x[3]))
+print('EAPR: ',EAPR(result1.x[:3],result1.x[3]))
+print('EAPC: ',EAPC(result1.x[:3],result1.x[3]))
 
 # Parameter for collaborative approach
 gamma = np.array([0.17,0.23,0.2])
