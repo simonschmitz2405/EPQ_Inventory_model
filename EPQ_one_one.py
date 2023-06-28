@@ -173,9 +173,9 @@ def objective_non_collaborative(x):
     rho = x[-1]
     return -EAPM(q, rho)
 
-
+# Restricction for optimization
 cons = [{'type': 'ineq', 'fun': lambda x:  p*TPM(x[0]) - x[0]},
-        {'type':'ineq','fun':lambda x: x[0] - demand_retailer(x[-1])*(TR(x[0],x[-1])-TM(x[0],x[-1]))}]
+        {'type':'ineq','fun':lambda x: x[0] - demand_retailer(x[-1])*TM(x[0],x[-1])}]
 
 
 initial_guess = np.array([1, 1])
