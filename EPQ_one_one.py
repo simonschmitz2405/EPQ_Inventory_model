@@ -25,9 +25,9 @@ Parameter of manufacturer
 WM  = 27000 # selling price per unit
 HM = 650.70 # inventory holding cost per unit per time
 Hmi = 976.05 # inventory holding cost of raw materials per unit per time
-AM = 6072575.64 # setup cost per lot per setup
+AM = 6072575.64 # setup cost per lot per time
 CM = 5072.36 # material cost per unit
-LM = 158399760 # labor cost per cycle
+LM = 158399760 # labor cost per time
 aM = 1837.62 # tool cost per unit
 p = 56880 # production rate units per time
 beta = 0.05 # expected percentage of defective items
@@ -67,33 +67,25 @@ Define the functions for the manufacturer profit
 
 # Demand of the retailer with exponential distribution (DR)
 def demand_retailer(rho):
-    DR = (X)+tau*(1-(1/(1+rho)))
+    DR = X+tau*(1-(1/(1+rho)))
     return DR
-
-# Income from sales (WMT)
-def income_sales_manu(q):
-    return WM*q
-
-# Production cost for manufacturer (cp) 
-def prod_cost_manu(q):
-    return (((q)/(1-beta))*(CM+(LM/p)+aM))
 
 # Inventory holding cost for raw material (HM)
 def holding_raw_manu(q,rho):
     demand_retailer_value = demand_retailer(rho)
-    return (((Hmi*(q**2))/(2*(1-beta)*p))-((Hmi*(demand_retailer_value)*(q**2))/(2*((1-beta)**2)*(p**2))))
+    HM = (Hmi/2)*(((q**2)/((1-beta)*p))-((demand_retailer_value*(q**2))/((1-beta)**2*p**2)))
+    return HM
+
 
 # Inventory holding cost for good items (HP)
 def holding_good_manu(q,rho):
-    # demand_retailer_value = demand_retailer(rho)
-    # return HM/2*((q**2)/(demand_retailer_value)-(q**2)/((1-beta)*p))
-   # return HM*((1-beta)*p*(TPM(q)**2)/2-(1-beta)*TPM(q)**2*p+(1-beta)*TPM(q)*TM(q,rho)*p-demand_retailer(rho)*TPM(q)*TM(q,rho)-demand_retailer(rho)*(TM(q,rho)**2)/2)
-    return (HR/2)*(-(q**2/demand_retailer(rho))+2*(q**2*demand_retailer(rho)/demand_retailer(rho)**2)-(demand_retailer(rho)**2*q**2)/(X*demand_retailer(rho)**2))
-
+    HP = (HM/2)*((q**2)/demand_retailer(rho)-(q**2)/((1-beta)*p)+2*(q**2)*(1/demand_retailer(rho)-(1/((1-beta)*p))))
+    return HP
 
 # Inventory holding cost for defective times (HPD)
 def holding_defec_manu(q):
-    return HM*((beta*(q**2))/(2*((1-beta)**2)*p)+(beta*p*(q))/((1-beta)*rM))
+    HPD = (HM/2)*(beta*(1/rM)*(q**2)/(((1-beta)**2)*p))
+    return HPD
 
 # Cost for qualitiy inspections (SM)
 def quality_inspec_manu(q):
@@ -101,12 +93,24 @@ def quality_inspec_manu(q):
 
 # Setup cost (AMT)
 def setup_manu(q):
-    # return AM*(q)/((1-beta)*p)
-    return AM
+    AMT = AM*(q)/((1-beta)*p)
+    return AMT
+
+# Production cost for manufacturer (cp) 
+def prod_cost_manu(q):
+    cp = q/((1-beta)*p)*(CM*p+LM+aM*p)
+    return cp
 
 # Cost of initiative of sales team (KMT)
 def init_sales_manu(rho):
-    return KM*psi*(rho**m)
+    KMT = KM*psi*(rho**m)
+    return KMT
+
+# Income from sales (WMT)
+def income_sales_manu(q):
+    return WM*q
+
+
 
 # Total expected profit of the manufacturer (EAPM)
 def EAPM(q,rho):
@@ -116,33 +120,31 @@ def EAPM(q,rho):
 Define the functions for the retailers profit
 '''
 
+# Inventory holding cost for product at retailers (HPR)
+def holding_good_retailer(q,rho):
+    HPR = (HR/2)*((q**2)/demand_retailer(rho)+2*(q**2)*(demand_retailer(rho)-X)-((q**2)/X))
+    return HPR
+
+# Marketing effort for retailer (EM)
+def marketing_retailer(rho):
+    EM = KR*gamma*(rho**m)
+    return EM
+
+# Setup cost at the retailer (CL)
+def setup_retailer(q,rho):
+    CL = AR * (q/X)
+    return CL
+
+# Purchasing cost (CC)
+def purch_cost_retailer(q):
+    CC = WM*q
+    return CC
+
 # Income from sold units
 def income_sales_retailer(rho):
     Income = WR*demand_retailer(rho)
     return Income
 
-# Purchasing cost
-def purch_cost_retailer(q):
-    purch = WM*q
-    return purch
-
-# Inventory holding cost for product at retailers
-def holding_good_retailer(q,rho):
-    # HPR = (HR/2)*(((((demand_retailer(rho))**2)*(q**2))/((X)*((demand_retailer(rho))**2)))-((demand_retailer(rho)*(q**2))/((demand_retailer(rho))**2)))
-    # return HPR
-    return (HR/2)*(((-q**2)/demand_retailer(rho))+2*((q**2)*demand_retailer(rho))/demand_retailer(rho)**2*(demand_retailer(rho)-X)-((demand_retailer(rho)**2*q**2)/(X*demand_retailer(rho)**2)))
-
-
-# Marketing effort for retailer (Gamma can not be dollar unit) (Why with elasticy parameter)
-def marketing_retailer(rho):
-    Marke = KR*gamma*(rho**m)
-    return Marke
-
-# Setup cost at the retailer
-def setup_retailer(q,rho):
-    # Setup = AR*((demand_retailer(rho)*(q))/((X)*demand_retailer(rho)))
-    # return Setup
-    return AR
 
 # Benefit of the retailer r
 def benefit_retailer(q,rho):
@@ -151,7 +153,7 @@ def benefit_retailer(q,rho):
 
 # Expected average profit of retailers
 def EAPR(q,rho):
-    return benefit_retailer(q,rho).sum()
+    return benefit_retailer(q,rho)
 
 # Collaborating profit function
 def EAPC(q,rho):
@@ -175,7 +177,9 @@ def objective_non_collaborative(x):
 
 # Restricction for optimization
 cons = [{'type': 'ineq', 'fun': lambda x:  p*TPM(x[0]) - x[0]},
-        {'type':'ineq','fun':lambda x: x[0] - demand_retailer(x[-1])*TM(x[0],x[-1])}]
+        {'type':'ineq','fun':lambda x: x[0] - demand_retailer(x[-1])*TM(x[0],x[-1])},
+        {'type': 'ineq', 'fun': lambda x:  EAPM(x[0],x[-1])},
+        {'type': 'ineq', 'fun': lambda x:  EAPR(x[0],x[-1])}]
 
 
 initial_guess = np.array([1, 1])
@@ -183,7 +187,7 @@ bounds = ((0,None),(0,None))
 options = {'maxiter':10000, 'disp':True,'ftol':10e-2}
 
 # Parameter for non-collaborative approach
-gamma = 100
+gamma = 0
 psi = 1
 
 '''
@@ -213,7 +217,7 @@ print('init_sales_manu',init_sales_manu(result1.x[-1]))
 print('demand_retailer',demand_retailer(result1.x[-1]))
 
 # Parameter for collaborative approach
-gamma = 0.17
+gamma = 0.6
 psi = 0.4 
 
 result2 = minimize(objective_coll, initial_guess,method = 'slsqp',constraints=cons,bounds=bounds,options=options)
@@ -226,8 +230,6 @@ print('EAPC: ',EAPC(result2.x[0],result2.x[-1]))
 
 print(result2)
 
-print('TEST FÜR EAPM')
-
 print('income_sales_manu',income_sales_manu(result2.x[0]))
 print('prod_cost_manu',prod_cost_manu(result2.x[0]))
 print('holding_raw_manu',holding_raw_manu(result2.x[0],result2.x[-1]))
@@ -236,8 +238,6 @@ print('holding_defec_manu',holding_defec_manu(result2.x[0]))
 print('quality_inspec_manu',quality_inspec_manu(result2.x[0]))
 print('setup_manu',setup_manu(result2.x[0]))
 print('init_sales_manu',init_sales_manu(result2.x[-1]))
-
-print('TEST FÜR EAPM')
 
 print('income_sales_retailer',income_sales_retailer(result2.x[-1]))
 print('purch_cost_retailer',purch_cost_retailer(result2.x[0]))
